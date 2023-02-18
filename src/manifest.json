@@ -6,8 +6,8 @@
 	"name": "joplin-note-email",
 	"description": "通过邮件发送笔记",
 	"author": "醉客",
-	"homepage_url": "https://github.com/zuikea/joplin-mail",
-	"repository_url": "https://github.com/zuikea/joplin-mail",
+	"homepage_url": "https://github.com/freezuike/joplin-note-email",
+	"repository_url": "https://github.com/freezuike/joplin-note-email",
 	"keywords": [],
 	"categories": []
 }
