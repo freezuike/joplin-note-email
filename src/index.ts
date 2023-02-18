@@ -2,6 +2,7 @@ import joplin from 'api';
 import { MenuItemLocation, SettingItemType, ToolbarButtonLocation } from 'api/types';
 const showdown = require("showdown");
 const nodemailer = require("nodemailer");
+const $ = require('jquery')
 
 joplin.plugins.register({
     onStart: async function () {
@@ -51,6 +52,41 @@ joplin.plugins.register({
             'to': {
                 label: 'to',
                 value: '',
+                type: SettingItemType.String,
+                section: 'joplin-note-email',
+                public: true,
+            },
+            'table_style': {
+                label: '表格',
+                value: 'width: 100%; border-spacing: 0px; border-collapse: collapse; border: none; margin-top: 20px;',
+                type: SettingItemType.String,
+                section: 'joplin-note-email',
+                public: true,
+            },
+            'th': {
+                label: '表头单元格',
+                value: 'border: 1px solid #DBDBDB; color: #666666; font-size: 14px; font-weight: normal; text-align: left; padding-left: 14px;',
+                type: SettingItemType.String,
+                section: 'joplin-note-email',
+                public: true,
+            },
+            'tr_even': {
+                label: '偶数行',
+                value: 'height: 40px; background: #F6F6F6;',
+                type: SettingItemType.String,
+                section: 'joplin-note-email',
+                public: true,
+            },
+            'td': {
+                label: '表格单元格',
+                value: 'border: 1px solid #DBDBDB; font-size: 14px; font-weight: normal; text-align: left; padding-left: 14px;',
+                type: SettingItemType.String,
+                section: 'joplin-note-email',
+                public: true,
+            },
+            'tr_odd': {
+                label: '奇数行',
+                value: 'height: 40px;',
                 type: SettingItemType.String,
                 section: 'joplin-note-email',
                 public: true,
@@ -128,28 +164,77 @@ function filterHeadings(content) {
     return filteredContent;
 }
 
+var bootstrap_extension = function () {
+    // 添加bootstrap，放弃，email不支持
+    var bootstrap_table = {
+        type: 'output',
+        filter: async (html) => {
+            const table_style = await joplin.settings.value("table_style");
+            const th = await joplin.settings.value("th");
+            const tr_even = await joplin.settings.value("tr_even");
+            const td = await joplin.settings.value("td");
+            const tr_odd = await joplin.settings.value("tr_odd");
+            var liveHtml = $('<div></div>').html(html);
+            console.log(liveHtml)
+            $("table", liveHtml).each(function () {
+                var table = $(this);
+                table.attr('style', table_style);
+            });
+            $("tr:even", liveHtml).each(function () {
+                var table = $(this);
+                table.attr('style', tr_even);
+            });
+            $("th", liveHtml).each(function () {
+                var table = $(this);
+                table.attr('style', th);
+            });
+            $("tr:odd", liveHtml).each(function () {
+                var table = $(this);
+                table.attr('style', tr_odd);
+            });
+            $("td", liveHtml).each(function () {
+                var table = $(this);
+                table.attr('style', td);
+            });
+            return liveHtml.html();
+        }
+    };
+    // 添加html语言
+    var bootstrap_language = {
+        type: 'output',
+        regex: /<html>/g,
+        replace: '<html lang="zh">'
+    };
+    return [bootstrap_language, bootstrap_table];
+}
+
+
 // 转换为html
 function convertToHTML(content) {
-    const converter = new showdown.Converter();
+    const converter = new showdown.Converter({
+        extensions: [bootstrap_extension]
+    });
 
-    // some options for the converter to be in line with Joplin's Markdown
     // 当一个段落后面跟着一个列表时，会有一种尴尬的效果。这种效果出现在一些情况下，在实时预览编辑器。
     converter.setOption("smoothPreview", true);
     // 换行
     converter.setOption("simpleLineBreaks", true);
     // 标题文本之间的空格不是必需的，但您可以通过启用requireSpaceBeforeHeadingText选项使其成为强制性的。＃
-    converter.setOption("requireSpaceBeforeHeadingText", true)
-    //删除线
+    converter.setOption("requireSpaceBeforeHeadingText", true);
+    // 删除线
     converter.setOption("strikethrough", true);
     // 任务列表
     converter.setOption("tasklists", true);
-    //图片大小
-    converter.setOption("parseImgDimensions", true)
-    //表格
+    // 图片大小
+    converter.setOption("parseImgDimensions", true);
+    // 表格
     converter.setOption("tables", true);
-    //风格
+    // 完整html
+    converter.setOption("completeHTMLDocument", true);
+    // 启动emoji
+    converter.setOption("emoji", true);
+    // 风格
     converter.setFlavor('github');
-    converter
 
 
     const html = converter.makeHtml(content);
@@ -188,7 +273,6 @@ async function htmlOfImage(html) {
             result.push({ 'filename': title, 'path': scr_url, 'cid': srcId });
         });
     }
-
     return result;
 }
 
@@ -229,18 +313,20 @@ async function nodeMailerSend(host, port, secure, user, pass, from, to, subject,
 
 // 发送邮件
 async function sendEmail(title, content) {
-    const filteredContent = convertToHTML(content);
-    // filterHeadings(content);
-    // 获取图像地址
-    const attachments = htmlOfImage(filteredContent);
-    const html = htmlOfImageUrl(filteredContent);
-
     const host = await joplin.settings.value("host");
     const port = await joplin.settings.value("port");
     const secure = await joplin.settings.value("secure");
     const user = await joplin.settings.value("user");
     const pass = await joplin.settings.value("pass");
     const to = await joplin.settings.value("to");
-    // 发送消息
-    nodeMailerSend(host, port, secure, user, pass, user, to, title, html, attachments);
+
+    const filteredContent = convertToHTML(content);
+    filteredContent.then(function (content_text) {
+        // 获取图像地址
+        const attachments = htmlOfImage(content_text);
+        // 适合nodeMailer的图像地址
+        const html = htmlOfImageUrl(content_text)
+        // 发送消息
+        nodeMailerSend(host, port, secure, user, pass, user, to, title, html, attachments);
+    })
 }
