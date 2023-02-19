@@ -2,7 +2,8 @@ import joplin from 'api';
 import { MenuItemLocation, SettingItemType, ToolbarButtonLocation } from 'api/types';
 const showdown = require("showdown");
 const nodemailer = require("nodemailer");
-const $ = require('jquery')
+const $ = require('jquery');
+// const layui = require('layui');
 
 joplin.plugins.register({
     onStart: async function () {
@@ -91,10 +92,24 @@ joplin.plugins.register({
                 section: 'joplin-note-email',
                 public: true,
             },
+            'blockquote': {
+                label: '引用',
+                value: "color: #777; background-color: rgba(66, 185, 131, .1);  border-left: 4px solid #42b983;padding: 10px 15px;position: relative;font-family: 'Roboto', sans-serif;line-height: 150%;text-indent: 35px;",
+                type: SettingItemType.String,
+                section: 'joplin-note-email',
+                public: true,
+            },
+            'pre': {
+                label: '代码块',
+                value: "padding: 1rem;font-size: 85%;line-height: 1.45;background-color: #f7f7f7;border: 0;border-radius: 3px;color: #777777;margin-top: 0 !important;",
+                type: SettingItemType.String,
+                section: 'joplin-note-email',
+                public: true,
+            },
         });
 
 
-        //获取当前笔记
+        // 获取当前笔记
         async function getCurrentNote() {
             const note = await joplin.workspace.selectedNote();
             if (note) {
@@ -111,10 +126,11 @@ joplin.plugins.register({
         });
         getCurrentNote();
 
+        // 命令行发送邮件
         await joplin.commands.register({
             name: "sendEmail",
             label: "joplin-note-email",
-            iconName: "far fa-envelope",
+            iconName: "fa fa-solid fa-envelope",
             execute: async () => {
                 const currNote = await getCurrentNote();
                 if (currNote) {
@@ -125,15 +141,17 @@ joplin.plugins.register({
             },
         });
 
+        //工具栏按钮
         await joplin.views.toolbarButtons.create(
             "email-button",
             "sendEmail",
             ToolbarButtonLocation.EditorToolbar
         );
 
+        //右键 发送选中文本
         await joplin.commands.register({
             name: "emailSelection",
-            label: "Email Selection",
+            label: "发送选中的文字",
             execute: async () => {
                 const currNote = await getCurrentNote();
                 // get selected text
@@ -164,9 +182,9 @@ function filterHeadings(content) {
     return filteredContent;
 }
 
-var bootstrap_extension = function () {
-    // 添加bootstrap，放弃，email不支持
-    var bootstrap_table = {
+var style_extension = function () {
+    // bootstrap，放弃，email不支持
+    var style_html = {
         type: 'output',
         filter: async (html) => {
             const table_style = await joplin.settings.value("table_style");
@@ -174,6 +192,8 @@ var bootstrap_extension = function () {
             const tr_even = await joplin.settings.value("tr_even");
             const td = await joplin.settings.value("td");
             const tr_odd = await joplin.settings.value("tr_odd");
+            const blockquote = await joplin.settings.value("blockquote");
+            const pre = await joplin.settings.value("pre");
             var liveHtml = $('<div></div>').html(html);
             console.log(liveHtml)
             $("table", liveHtml).each(function () {
@@ -196,23 +216,31 @@ var bootstrap_extension = function () {
                 var table = $(this);
                 table.attr('style', td);
             });
+            $("blockquote", liveHtml).each(function () {
+                var table = $(this);
+                table.attr('style', blockquote);
+            });
+            $("pre", liveHtml).each(function () {
+                var table = $(this);
+                table.attr('style', pre);
+            });
             return liveHtml.html();
-        }
+        },
     };
     // 添加html语言
-    var bootstrap_language = {
+    var html_language = {
         type: 'output',
         regex: /<html>/g,
         replace: '<html lang="zh">'
     };
-    return [bootstrap_language, bootstrap_table];
+    return [html_language, style_html];
 }
 
 
 // 转换为html
 function convertToHTML(content) {
     const converter = new showdown.Converter({
-        extensions: [bootstrap_extension]
+        extensions: [style_extension]
     });
 
     // 当一个段落后面跟着一个列表时，会有一种尴尬的效果。这种效果出现在一些情况下，在实时预览编辑器。
@@ -251,10 +279,37 @@ function htmlOfImageUrl(html) {
         html = html.replace(temp[1], srcId);
     }
     return html;
+
+    // var liveHtml = $('<div></div>').html(html);
+    // var return_html = $('img', liveHtml).each(function () {
+    //     var img_url = $(this).attr('src').replace(/:\//, "cid:");
+    // });
+
+    // console.log(return_html)
+    // return liveHtml;
 }
 
 // 获取html中的src地址，存为数组
 async function htmlOfImage(html) {
+    // result 数组中内容顺序可能错误
+    // const result = [];
+    // var liveHtml = $('<div></div>').html(html);
+    // $('img', liveHtml).each(async function () {
+    //     var srcId = $(this).attr('src').replace(/:\//, "");
+    //     let title;
+    //     await joplin.data.get(['resources', srcId], {
+    //         fields: "id, title, updated_time",
+    //         order_by: "updated_time",
+    //         order_dir: "DESC"
+    //     }).then(function (obj) {
+    //         title = obj.title;
+    //     });
+    //     await joplin.data.resourcePath(srcId).then(function (scr_url) {
+    //         result.push({ 'filename': title, 'path': scr_url, 'cid': srcId });
+    //     });
+    // });
+    // console.log(result)
+
     const regExp = /<img[^>]+src=['"]([^'"]+)['"]+/g;
     const result = [];
     let temp;
@@ -302,9 +357,27 @@ async function nodeMailerSend(host, port, secure, user, pass, from, to, subject,
         console.log(mailOptins);
         transporter.sendMail(mailOptins, (error, info) => {
             if (error) {
-                console.log(error)
+                alert('邮件发送错误：' + error);
             } else {
-                console.log('邮件发送成功：' + info.response)
+                // layui.use(['layer', 'form'], function () {
+                //     var layer = layui.layer;
+                //     var form = layui.form;
+                //     layer.alert('邮件发送成功' + info.response, {
+                //         time: 5 * 1000
+                //         , success: function (layero, index) {
+                //             var timeNum = this.time / 1000, setText = function (start) {
+                //                 layer.title((start ? timeNum : --timeNum) + ' 秒后关闭', index);
+                //             };
+                //             setText(!0);
+                //             this.timer = setInterval(setText, 1000);
+                //             if (timeNum <= 0) clearInterval(this.timer);
+                //         }
+                //         , end: function () {
+                //             clearInterval(this.timer);
+                //         }
+                //     })
+                // });
+                alert('邮件发送成功' + info.response);
             }
         })
     });
@@ -320,13 +393,12 @@ async function sendEmail(title, content) {
     const pass = await joplin.settings.value("pass");
     const to = await joplin.settings.value("to");
 
-    const filteredContent = convertToHTML(content);
-    filteredContent.then(function (content_text) {
+    convertToHTML(content).then(function (htmlText) {
         // 获取图像地址
-        const attachments = htmlOfImage(content_text);
+        const attachments = htmlOfImage(htmlText);
         // 适合nodeMailer的图像地址
-        const html = htmlOfImageUrl(content_text)
+        const html = htmlOfImageUrl(htmlText)
         // 发送消息
         nodeMailerSend(host, port, secure, user, pass, user, to, title, html, attachments);
-    })
+    });
 }
