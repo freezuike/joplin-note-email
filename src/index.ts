@@ -3,7 +3,6 @@ import { MenuItemLocation, SettingItemType, ToolbarButtonLocation } from 'api/ty
 const showdown = require("showdown");
 const nodemailer = require("nodemailer");
 const $ = require('jquery');
-// const layui = require('layui');
 
 joplin.plugins.register({
     onStart: async function () {
@@ -194,7 +193,7 @@ var style_extension = function () {
             const tr_odd = await joplin.settings.value("tr_odd");
             const blockquote = await joplin.settings.value("blockquote");
             const pre = await joplin.settings.value("pre");
-            var liveHtml = $('<div></div>').html(html);
+            var liveHtml = $('<html></html>').html(html);
             console.log(liveHtml)
             $("table", liveHtml).each(function () {
                 var table = $(this);
@@ -227,13 +226,7 @@ var style_extension = function () {
             return liveHtml.html();
         },
     };
-    // 添加html语言
-    var html_language = {
-        type: 'output',
-        regex: /<html>/g,
-        replace: '<html lang="zh">'
-    };
-    return [html_language, style_html];
+    return [style_html];
 }
 
 
@@ -291,25 +284,6 @@ function htmlOfImageUrl(html) {
 
 // 获取html中的src地址，存为数组
 async function htmlOfImage(html) {
-    // result 数组中内容顺序可能错误
-    // const result = [];
-    // var liveHtml = $('<div></div>').html(html);
-    // $('img', liveHtml).each(async function () {
-    //     var srcId = $(this).attr('src').replace(/:\//, "");
-    //     let title;
-    //     await joplin.data.get(['resources', srcId], {
-    //         fields: "id, title, updated_time",
-    //         order_by: "updated_time",
-    //         order_dir: "DESC"
-    //     }).then(function (obj) {
-    //         title = obj.title;
-    //     });
-    //     await joplin.data.resourcePath(srcId).then(function (scr_url) {
-    //         result.push({ 'filename': title, 'path': scr_url, 'cid': srcId });
-    //     });
-    // });
-    // console.log(result)
-
     const regExp = /<img[^>]+src=['"]([^'"]+)['"]+/g;
     const result = [];
     let temp;
@@ -359,24 +333,6 @@ async function nodeMailerSend(host, port, secure, user, pass, from, to, subject,
             if (error) {
                 alert('邮件发送错误：' + error);
             } else {
-                // layui.use(['layer', 'form'], function () {
-                //     var layer = layui.layer;
-                //     var form = layui.form;
-                //     layer.alert('邮件发送成功' + info.response, {
-                //         time: 5 * 1000
-                //         , success: function (layero, index) {
-                //             var timeNum = this.time / 1000, setText = function (start) {
-                //                 layer.title((start ? timeNum : --timeNum) + ' 秒后关闭', index);
-                //             };
-                //             setText(!0);
-                //             this.timer = setInterval(setText, 1000);
-                //             if (timeNum <= 0) clearInterval(this.timer);
-                //         }
-                //         , end: function () {
-                //             clearInterval(this.timer);
-                //         }
-                //     })
-                // });
                 alert('邮件发送成功' + info.response);
             }
         })
