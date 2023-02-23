@@ -105,6 +105,14 @@ joplin.plugins.register({
                 section: 'joplin-note-email',
                 public: true,
             },
+            'latex': {
+                label: '公式',
+                value: "https://latex.codecogs.com/svg.image?",
+                type: SettingItemType.String,
+                section: 'joplin-note-email',
+                description: 'https://latex.codecogs.com/svg.image? https://www.zhihu.com/equation?tex= https://chart.googleapis.com/chart?cht=tx&chl=',
+                public: true,
+            },
         });
 
 
@@ -193,6 +201,7 @@ var style_extension = function () {
             const tr_odd = await joplin.settings.value("tr_odd");
             const blockquote = await joplin.settings.value("blockquote");
             const pre = await joplin.settings.value("pre");
+            const latex = await joplin.settings.value("latex");
             var liveHtml = $('<html></html>').html(html);
             console.log(liveHtml)
             $("table", liveHtml).each(function () {
@@ -223,6 +232,12 @@ var style_extension = function () {
                 var table = $(this);
                 table.attr('style', pre);
             });
+            $("p", liveHtml).each(function () {
+                if ($(this).html().startsWith("$") && $(this).html().endsWith("$")) {
+                    var text = $(this).html().replace(/[<br>]/g, "").replace(/\$/g, "");
+                    $(this).html("<br><img src='" + latex + text + "' text='" + text + "' />")
+                }
+            })
             return liveHtml.html();
         },
     };
@@ -268,8 +283,10 @@ function htmlOfImageUrl(html) {
     const regExp = /<img[^>]+src=['"]([^'"]+)['"]+/g;
     let temp;
     while ((temp = regExp.exec(html)) != null) {
-        let srcId = temp[1].replace(/:\//, "cid:");
-        html = html.replace(temp[1], srcId);
+        if (temp[1].startsWith(":/")) {
+            let srcId = temp[1].replace(/:\//, "cid:");
+            html = html.replace(temp[1], srcId);
+        }
     }
     return html;
 
@@ -288,19 +305,20 @@ async function htmlOfImage(html) {
     const result = [];
     let temp;
     while ((temp = regExp.exec(html)) != null) {
-        let srcId = temp[1].replace(/:\//, "");
-
-        let title;
-        await joplin.data.get(['resources', srcId], {
-            fields: "id, title, updated_time",
-            order_by: "updated_time",
-            order_dir: "DESC"
-        }).then(function (obj) {
-            title = obj.title;
-        });
-        await joplin.data.resourcePath(srcId).then(function (scr_url) {
-            result.push({ 'filename': title, 'path': scr_url, 'cid': srcId });
-        });
+        if (temp[1].startsWith(":/")) {
+            let srcId = temp[1].replace(/:\//, "");
+            let title;
+            await joplin.data.get(['resources', srcId], {
+                fields: "id, title, updated_time",
+                order_by: "updated_time",
+                order_dir: "DESC"
+            }).then(function (obj) {
+                title = obj.title;
+            });
+            await joplin.data.resourcePath(srcId).then(function (scr_url) {
+                result.push({ 'filename': title, 'path': scr_url, 'cid': srcId });
+            });
+        }
     }
     return result;
 }
