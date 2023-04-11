@@ -100,7 +100,7 @@ joplin.plugins.register({
             },
             'pre': {
                 label: '代码块',
-                value: "padding: 1rem;font-size: 85%;line-height: 1.45;background-color: #f7f7f7;border: 0;border-radius: 3px;color: #777777;margin-top: 0 !important;",
+                value: "overflow-x:scroll;padding: 1rem;font-size: 85%;line-height: 1.45;background-color: #f7f7f7;border: 0;border-radius: 3px;color: #777777;margin-top: 0 !important;",
                 type: SettingItemType.String,
                 section: 'joplin-note-email',
                 public: true,
