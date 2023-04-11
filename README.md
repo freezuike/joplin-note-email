@@ -1,3 +1,9 @@
+
+参考：
+https://github.com/EliasVincent/joplin-email-note
+
+
+>不会写前端，东拼西凑的产品，一定程度解决了无法分享笔记的弊端，要是移动端可以使用插件，对我来说joplin就是最好的方案了
 # Joplin Plugin
 
 This is a template to create a new Joplin plugin.
