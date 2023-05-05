@@ -237,7 +237,12 @@ var style_extension = function () {
                     var text = $(this).html().replace(/[<br>]/g, "").replace(/\$/g, "");
                     $(this).html("<br><img src='" + latex + text + "' text='" + text + "' />")
                 }
-            })
+            });
+            //图片自适应
+            $("img", liveHtml).each(function () {
+                var table = $(this);
+                table.attr('style', "max-width:100%;overflow:hidden;");
+            });
             return liveHtml.html();
         },
     };
