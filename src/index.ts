@@ -173,6 +173,8 @@ joplin.plugins.register({
                 const language = await joplin.settings.value('language');
                 console.log('Changing language to:', language);
                 changeLocale(language);
+                // 刷新界面
+                window.location.reload();
             }
         });
 
