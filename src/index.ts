@@ -3,116 +3,177 @@ import { MenuItemLocation, SettingItemType, ToolbarButtonLocation } from 'api/ty
 const showdown = require("showdown");
 const nodemailer = require("nodemailer");
 const $ = require('jquery');
+const translations = require("./res/lang/translation.json");
+const language = require("./res/lang/language.json");
+// 默认语言
+const defaultLocale = "zh_cn";
+
+let currentLocale = localStorage.getItem("language") ?? defaultLocale;
+
+// 设置语言文本
+function translate(key) {
+    return translations[currentLocale][key] ?? key;
+}
+
+// 更改语言
+function changeLocale(locale) {
+    currentLocale = locale;
+    localStorage.setItem("language", locale);
+}
+
+// 设置当前语言
+changeLocale(currentLocale);
 
 joplin.plugins.register({
     onStart: async function () {
+
+
+
         await joplin.settings.registerSection("joplin-note-email", {
             label: "joplin-note-email",
             iconName: "far fa-envelope",
         });
 
         await joplin.settings.registerSettings({
+            'language': {
+                type: SettingItemType.String,
+                value: defaultLocale,
+                isEnum: true,
+                options: language,
+                label: translate('Language'),
+                section: 'joplin-note-email',
+                public: true,
+                description: translate('language'),
+            },
             'host': {
-                label: 'host',
+                label: translate('host'),
                 value: 'smtp.office365.com',
                 type: SettingItemType.String,
                 section: 'joplin-note-email',
                 public: true,
+                description: translate('host_description'),
             },
             'port': {
-                label: 'port',
+                label: translate('port'),
                 value: 587,
                 type: SettingItemType.Int,
                 section: 'joplin-note-email',
                 public: true,
+                description: translate('port_description'),
             },
             'secure': {
-                label: 'secure',
+                label: translate('secure'),
                 value: false,
                 type: SettingItemType.Bool,
                 section: 'joplin-note-email',
                 public: true,
-                description: 'ssl',
+                description: translate('secure_description'),
             },
             'user': {
-                label: 'user',
+                label: translate('user'),
                 value: '',
                 type: SettingItemType.String,
                 section: 'joplin-note-email',
                 public: true,
+                description: translate('user_description'),
             },
             'pass': {
-                label: 'pass',
+                label: translate('pass'),
                 value: '',
                 type: SettingItemType.String,
                 section: 'joplin-note-email',
                 public: true,
-                secure: true
+                secure: true,
+                description: translate('pass_description'),
             },
             'to': {
-                label: 'to',
+                label: translate('to'),
                 value: '',
                 type: SettingItemType.String,
                 section: 'joplin-note-email',
                 public: true,
+                description: translate('to_description'),
             },
             'table_style': {
-                label: '表格',
+                label: translate('table_style'),
                 value: 'width: 100%; border-spacing: 0px; border-collapse: collapse; border: none; margin-top: 20px;',
                 type: SettingItemType.String,
                 section: 'joplin-note-email',
                 public: true,
+                description: translate('table_style_description'),
             },
             'th': {
-                label: '表头单元格',
+                label: translate('th'),
                 value: 'border: 1px solid #DBDBDB; color: #666666; font-size: 14px; font-weight: normal; text-align: left; padding-left: 14px;',
                 type: SettingItemType.String,
                 section: 'joplin-note-email',
                 public: true,
+                description: translate('th_description'),
             },
             'tr_even': {
-                label: '偶数行',
+                label: translate('tr_even'),
                 value: 'height: 40px; background: #F6F6F6;',
                 type: SettingItemType.String,
                 section: 'joplin-note-email',
                 public: true,
+                description: translate('tr_even_description'),
             },
             'td': {
-                label: '表格单元格',
+                label: translate('td'),
                 value: 'border: 1px solid #DBDBDB; font-size: 14px; font-weight: normal; text-align: left; padding-left: 14px;',
                 type: SettingItemType.String,
                 section: 'joplin-note-email',
                 public: true,
+                description: translate('td_description'),
             },
             'tr_odd': {
-                label: '奇数行',
+                label: translate('tr_odd'),
                 value: 'height: 40px;',
                 type: SettingItemType.String,
                 section: 'joplin-note-email',
                 public: true,
+                description: translate('tr_odd_description'),
             },
             'blockquote': {
-                label: '引用',
+                label: translate('blockquote'),
                 value: "color: #777; background-color: rgba(66, 185, 131, .1);  border-left: 4px solid #42b983;padding: 10px 15px;position: relative;font-family: 'Roboto', sans-serif;line-height: 150%;text-indent: 35px;",
                 type: SettingItemType.String,
                 section: 'joplin-note-email',
                 public: true,
+                description: translate('blockquote_description'),
             },
             'pre': {
-                label: '代码块',
+                label: translate('pre'),
                 value: "overflow-x:scroll;padding: 1rem;font-size: 85%;line-height: 1.45;background-color: #f7f7f7;border: 0;border-radius: 3px;color: #777777;margin-top: 0 !important;",
                 type: SettingItemType.String,
                 section: 'joplin-note-email',
                 public: true,
+                description: translate('pre_description'),
             },
             'latex': {
-                label: '公式',
-                value: "https://latex.codecogs.com/svg.image?",
+                label: translate('latex'),
+                value: "https://www.zhihu.com/equation?tex=",
                 type: SettingItemType.String,
+                options: {
+                    "https://www.zhihu.com/equation?tex=": "https://www.zhihu.com/equation?tex=", "https://latex.codecogs.com/svg.image?": "https://latex.codecogs.com/svg.image?", "https://chart.googleapis.com/chart?cht=tx&chl=": "https://chart.googleapis.com/chart?cht=tx&chl="
+                },
                 section: 'joplin-note-email',
-                description: 'https://latex.codecogs.com/svg.image? https://www.zhihu.com/equation?tex= https://chart.googleapis.com/chart?cht=tx&chl=',
+                description: translate('latex_description'),
                 public: true,
+                isEnum: true,
             },
+        });
+
+        // 保持设置与缓存一致
+        await joplin.settings.setValue('language', currentLocale ? currentLocale : defaultLocale)
+
+        // 监听设置更改事件
+        await joplin.settings.onChange(async (event) => {
+            if (event.keys.includes('language')) {
+                const language = await joplin.settings.value('language');
+                console.log('Changing language to:', language);
+                changeLocale(language);
+            }
         });
 
 
@@ -136,7 +197,7 @@ joplin.plugins.register({
         // 命令行发送邮件
         await joplin.commands.register({
             name: "sendEmail",
-            label: "joplin-note-email",
+            label: translate('sendEmail'),
             iconName: "fa fa-solid fa-envelope",
             execute: async () => {
                 const currNote = await getCurrentNote();
@@ -148,17 +209,17 @@ joplin.plugins.register({
             },
         });
 
-        //工具栏按钮
+        // 工具栏按钮
         await joplin.views.toolbarButtons.create(
             "email-button",
             "sendEmail",
             ToolbarButtonLocation.EditorToolbar
         );
 
-        //右键 发送选中文本
+        // 右键 发送选中文本
         await joplin.commands.register({
-            name: "emailSelection",
-            label: "发送选中的文字",
+            name: "sendEmailSelection",
+            label: translate('sendEmailSelection'),
             execute: async () => {
                 const currNote = await getCurrentNote();
                 // get selected text
@@ -173,10 +234,10 @@ joplin.plugins.register({
             },
         });
 
-        // create context menu item to email selection
+        // 上下文菜单
         await joplin.views.menuItems.create(
             "emailSelectionThroughContextMenu",
-            "emailSelection",
+            "sendEmailSelection",
             MenuItemLocation.EditorContextMenu,
             { accelerator: "Ctrl+Alt+E" }
         );
@@ -248,7 +309,6 @@ var style_extension = function () {
     };
     return [style_html];
 }
-
 
 // 转换为html
 function convertToHTML(content) {
@@ -354,9 +414,9 @@ async function nodeMailerSend(host, port, secure, user, pass, from, to, subject,
         console.log(mailOptins);
         transporter.sendMail(mailOptins, (error, info) => {
             if (error) {
-                alert('邮件发送错误：' + error);
+                alert(translate('sendMailFailed') + error);
             } else {
-                alert('邮件发送成功' + info.response);
+                alert(translate('mailSentSuccessfully') + info.response);
             }
         })
     });
