@@ -5,39 +5,37 @@ const nodemailer = require("nodemailer");
 const $ = require('jquery');
 const translations = require("./res/lang/translation.json");
 const language = require("./res/lang/language.json");
-// 默认语言
-const defaultLocale = "zh_cn";
-
-let currentLocale = localStorage.getItem("language") ?? defaultLocale;
-
-// 设置语言文本
-function translate(key) {
-    return translations[currentLocale][key] ?? key;
-}
-
-// 更改语言
-function changeLocale(locale) {
-    currentLocale = locale;
-    localStorage.setItem("language", locale);
-}
-
-// 设置当前语言
-changeLocale(currentLocale);
 
 joplin.plugins.register({
     onStart: async function () {
+        //获取joplin的语言
+        let currentGlobal = await joplin.settings.globalValue("locale");
+        console.debug("joplin 现在的语言  ", currentGlobal)
 
+        //如果joplin设置了新的语言，防止出错设置一个默认语言
+        if (!currentGlobal) {
+            currentGlobal = "zh_CN";
+        }
 
+        // 设置语言文本
+        function translate(key) {
+            return translations[currentGlobal][key] ?? key;
+        }
+
+        // 更改语言
+        function changeLocale(locale) {
+            currentGlobal = locale;
+        }
 
         await joplin.settings.registerSection("joplin-note-email", {
-            label: "joplin-note-email",
+            label: translate('noteEmail'),
             iconName: "far fa-envelope",
         });
 
         await joplin.settings.registerSettings({
             'language': {
                 type: SettingItemType.String,
-                value: defaultLocale,
+                value: currentGlobal,
                 isEnum: true,
                 options: language,
                 label: translate('Language'),
@@ -163,21 +161,6 @@ joplin.plugins.register({
                 isEnum: true,
             },
         });
-
-        // 保持设置与缓存一致
-        await joplin.settings.setValue('language', currentLocale ? currentLocale : defaultLocale)
-
-        // 监听设置更改事件
-        await joplin.settings.onChange(async (event) => {
-            if (event.keys.includes('language')) {
-                const language = await joplin.settings.value('language');
-                console.log('Changing language to:', language);
-                changeLocale(language);
-                // 刷新界面
-                window.location.reload();
-            }
-        });
-
 
         // 获取当前笔记
         async function getCurrentNote() {
@@ -414,6 +397,9 @@ async function nodeMailerSend(host, port, secure, user, pass, from, to, subject,
             attachments
         }
         console.log(mailOptins);
+        function translate(key) {
+            return translations[localStorage.getItem("language")][key] ?? key;
+        }
         transporter.sendMail(mailOptins, (error, info) => {
             if (error) {
                 alert(translate('sendMailFailed') + error);
