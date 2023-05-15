@@ -4,12 +4,16 @@ const showdown = require("showdown");
 const nodemailer = require("nodemailer");
 const $ = require('jquery');
 const translations = require("./res/lang/translation.json");
-const language = require("./res/lang/language.json");
+
+let currentGlobal;
 
 joplin.plugins.register({
     onStart: async function () {
         //获取joplin的语言
-        let currentGlobal = await joplin.settings.globalValue("locale");
+        async function getLocale() {
+            return await joplin.settings.globalValue("locale");
+        }
+        currentGlobal = await getLocale();
         console.debug("joplin 现在的语言  ", currentGlobal)
 
         //如果joplin设置了新的语言，防止出错设置一个默认语言
@@ -27,22 +31,28 @@ joplin.plugins.register({
             currentGlobal = locale;
         }
 
-        await joplin.settings.registerSection("joplin-note-email", {
-            label: translate('noteEmail'),
-            iconName: "far fa-envelope",
-        });
+        async function pollLocale() {
+            const handlerOptions = { passive: true };
+            console.debug("开始监测joplin语言变化");
+            const interval = async () => {
+                const newLocale = await getLocale();
+                if (newLocale !== currentGlobal) {
+                    currentGlobal = newLocale;
+                    changeLocale(currentGlobal);
+                    window.location.reload();
+                }
+                setTimeout(interval, 1000);
+            };
+            interval();
+            window.addEventListener('scroll', interval, handlerOptions);
+            console.debug("结束监测joplin语言变化");
+        }
+        // 在插件初始化时开始监听语言变化
+        pollLocale();
+
+
 
         await joplin.settings.registerSettings({
-            'language': {
-                type: SettingItemType.String,
-                value: currentGlobal,
-                isEnum: true,
-                options: language,
-                label: translate('Language'),
-                section: 'joplin-note-email',
-                public: true,
-                description: translate('language'),
-            },
             'host': {
                 label: translate('host'),
                 value: 'smtp.office365.com',
@@ -99,6 +109,7 @@ joplin.plugins.register({
                 section: 'joplin-note-email',
                 public: true,
                 description: translate('table_style_description'),
+                advanced: true
             },
             'th': {
                 label: translate('th'),
@@ -107,6 +118,7 @@ joplin.plugins.register({
                 section: 'joplin-note-email',
                 public: true,
                 description: translate('th_description'),
+                advanced: true
             },
             'tr_even': {
                 label: translate('tr_even'),
@@ -115,6 +127,7 @@ joplin.plugins.register({
                 section: 'joplin-note-email',
                 public: true,
                 description: translate('tr_even_description'),
+                advanced: true
             },
             'td': {
                 label: translate('td'),
@@ -123,6 +136,7 @@ joplin.plugins.register({
                 section: 'joplin-note-email',
                 public: true,
                 description: translate('td_description'),
+                advanced: true
             },
             'tr_odd': {
                 label: translate('tr_odd'),
@@ -131,6 +145,7 @@ joplin.plugins.register({
                 section: 'joplin-note-email',
                 public: true,
                 description: translate('tr_odd_description'),
+                advanced: true
             },
             'blockquote': {
                 label: translate('blockquote'),
@@ -139,6 +154,7 @@ joplin.plugins.register({
                 section: 'joplin-note-email',
                 public: true,
                 description: translate('blockquote_description'),
+                advanced: true
             },
             'pre': {
                 label: translate('pre'),
@@ -147,6 +163,7 @@ joplin.plugins.register({
                 section: 'joplin-note-email',
                 public: true,
                 description: translate('pre_description'),
+                advanced: true
             },
             'latex': {
                 label: translate('latex'),
@@ -159,7 +176,13 @@ joplin.plugins.register({
                 description: translate('latex_description'),
                 public: true,
                 isEnum: true,
+                advanced: true
             },
+        });
+
+        await joplin.settings.registerSection("joplin-note-email", {
+            label: translate('noteEmail'),
+            iconName: "far fa-envelope",
         });
 
         // 获取当前笔记
@@ -194,13 +217,6 @@ joplin.plugins.register({
             },
         });
 
-        // 工具栏按钮
-        await joplin.views.toolbarButtons.create(
-            "email-button",
-            "sendEmail",
-            ToolbarButtonLocation.EditorToolbar
-        );
-
         // 右键 发送选中文本
         await joplin.commands.register({
             name: "sendEmailSelection",
@@ -225,6 +241,13 @@ joplin.plugins.register({
             "sendEmailSelection",
             MenuItemLocation.EditorContextMenu,
             { accelerator: "Ctrl+Alt+E" }
+        );
+
+        // 工具栏按钮
+        await joplin.views.toolbarButtons.create(
+            "email-button",
+            "sendEmail",
+            ToolbarButtonLocation.EditorToolbar
         );
     },
 });
@@ -398,13 +421,13 @@ async function nodeMailerSend(host, port, secure, user, pass, from, to, subject,
         }
         console.log(mailOptins);
         function translate(key) {
-            return translations[localStorage.getItem("language")][key] ?? key;
+            return translations[currentGlobal][key] ?? key;
         }
         transporter.sendMail(mailOptins, (error, info) => {
             if (error) {
-                alert(translate('sendMailFailed') + error);
+                joplin.views.dialogs.showMessageBox(translate('sendMailFailed') + error)
             } else {
-                alert(translate('mailSentSuccessfully') + info.response);
+                joplin.views.dialogs.showMessageBox(translate('mailSentSuccessfully') + info.response)
             }
         })
     });
